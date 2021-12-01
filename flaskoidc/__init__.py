@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 class FlaskOIDC(Flask):
     def _before_request(self):
-        from flaskoidc.models import OAuth2Token
+        from flaskoidc.models import OAuth2Token, _update_token
 
         _current_time = round(time.time())
         # Whitelisted Endpoints i.e., health checks and status url
@@ -47,7 +47,9 @@ class FlaskOIDC(Flask):
             token = json.loads(token)
             if token.get("expires_at") <= _current_time:
                 LOGGER.exception("Token coming in request is expired")
-                abort(401)
+                _update_token(token, token.get("refresh_token"), token.get("access_token"))
+                redirect_uri = url_for("auth", _external=True)
+                return self.auth_client.authorize_redirect(redirect_uri)
             else:
                 LOGGER.debug("Token in request is not expired.")
                 try:
